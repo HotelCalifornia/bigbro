@@ -1,42 +1,39 @@
 {
-	"name": "bigbro",
-	"version": "1.0.0",
-	"description": "He's always watching.",
-	"keywords": [
-		"Discord",
-		"bot",
-		"log",
-		"music"
-	],
-	"homepage": "https://github.com/jtkiesel/bigbro#readme",
-	"bugs": {
-		"url": "https://github.com/jtkiesel/bigbro/issues"
-	},
-	"license": "MIT",
-	"author": {
-		"name": "Jordan T Kiesel"
-	},
-	"main": "app.js",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/jtkiesel/bigbro.git"
-	},
-	"scripts": {
-		"start": "node app.js"
-	},
-	"dependencies": {
-		"bufferutil": "^4.0.0",
-		"cron": "^1.4.1",
-		"discord.js": "github:hydrabolt/discord.js",
-		"erlpack": "github:discordapp/erlpack",
-		"googleapis": "^33.0.0",
-		"mongodb": "^3.1.4",
-		"node-opus": "^0.3.0",
-		"sodium": "^2.0.3",
-		"ytdl-core": "^0.25.2",
-		"zlib-sync": "^0.1.4"
-	},
-	"engines": {
-		"node": "^10.10.0"
-	}
+  "name": "bigbro",
+  "version": "1.0.0",
+  "description": "He's always watching.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jtkiesel/bigbro.git"
+  },
+  "keywords": [
+    "Discord",
+    "bot",
+    "log",
+    "music"
+  ],
+  "author": "Jordan T Kiesel",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jtkiesel/bigbro/issues"
+  },
+  "homepage": "https://github.com/jtkiesel/bigbro#readme",
+  "dependencies": {
+    "bufferutil": "^4.0.0",
+    "cron": "^1.4.1",
+    "discord.js": "github:discordjs/discord.js",
+    "discord.js-commando": "github:discordjs/Commando",
+    "erlpack": "github:discordapp/erlpack",
+    "googleapis": "^33.0.0",
+    "mongodb": "^3.1.4",
+    "node-opus": "^0.3.0",
+    "sodium": "^2.0.3",
+    "sqlite": "^3.0.0",
+    "ytdl-core": "^0.25.2",
+    "zlib-sync": "^0.1.4"
+  }
 }

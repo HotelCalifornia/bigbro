@@ -1,12 +1,12 @@
-const Discord = require('discord.js');
-const {google} = require('googleapis');
-const ytdl = require('ytdl-core');
+const { MessageEmbed } = require('discord.js');
+const { google } = require('googleapis');
+const { downloadFromInfo, getInfo } = require('ytdl-core');
 
-const app = require('./app');
+const { client } = require('./index.js');
 
 const youtube = google.youtube({version: 'v3', auth: process.env.GOOGLE_KEY});
 
-const queue = [];
+const queues = [];
 const voiceChannelId = {'197777408198180864': '197818048147750912', '329477820076130306': '329477820076130307'};
 const textChannelId = {'197777408198180864': '370062723326803969', '329477820076130306': '329477820076130306'};
 
@@ -48,10 +48,10 @@ const getTopic = (video, progress) => {
 
 const playNext = async guild => {
 	const guildId = guild.id;
-	const video = queue[guildId][0];
+	const video = queues[guildId][0];
 
 	if (video) {
-		const stream = ytdl.downloadFromInfo(video.info, {filter: 'audioonly'});
+		const stream = downloadFromInfo(video.info, {filter: 'audioonly'});
 		const textChannel = guild.channels.get(textChannelId[guildId]);
 		const voiceId = voiceChannelId[guildId];
 		let connection = guild.voiceConnection;
@@ -72,7 +72,7 @@ const playNext = async guild => {
 		const dispatcher = connection.play(stream);
 		const author = video.info.author;
 		const requester = video.message.member ? video.message.member.displayName : video.message.author.username;
-		const embed = new Discord.MessageEmbed()
+		const embed = new MessageEmbed()
 			.setColor('BLUE')
 			.setAuthor(author.name, author.avatar, author.user_url)
 			.setTitle(getTitle(video))
@@ -87,10 +87,7 @@ const playNext = async guild => {
 			console.error(err);
 		}
 		const collector = message.createReactionCollector((reaction, user) => {
-			if (user.id === app.client.user.id || !reaction.emoji.name === skip) {
-				return false;
-			}
-			return true;
+			return (user.id !== client.user.id) && (reaction.emoji.name === skip);
 		});
 		collector.on('collect', (reaction, user) => {
 			if (user.bot || !connection.channel.members.has(user.id)) {
@@ -114,36 +111,30 @@ const playNext = async guild => {
 		dispatcher.on('end', () => {
 			collector.stop();
 			clearInterval(id);
-			queue[guildId].shift();
+			queues[guildId].shift();
 
-			if (queue[guildId].length) {
+			if (queues[guildId].length) {
 				playNext(guild);
 			} else {
 				textChannel.setTopic(defaultTopic);
 				connection.disconnect();
 			}
 		});
-		try {
-			await message.react(skip);
-		} catch (err) {
-			console.error(err);
-		}
+		message.react(skip).catch(console.error);
 	}
 };
 
-const getQueue = guildId => {
-	return queue[guildId] || [];
-};
+const getQueue = guildId => queues[guildId] || [];
 
 const sendQueue = message => {
-	const guildQueue = queue[message.guild.id];
+	const guildQueue = queues[message.guild.id];
 	if (guildQueue && guildQueue.length > 1) {
-		const embed = new Discord.MessageEmbed()
+		const embed = new MessageEmbed()
 			.setColor('BLUE')
 			.setDescription(guildQueue.slice(1).map((video, index) => `\`${String(index + 1).padStart(2, ' ')}.\` \`[${getDuration(video)}]\` [${getTitle(video)}](${getUrl(video)}) - ${getRequester(video)}`).join('\n'));
-		message.channel.send({embed});
+		message.channel.send({embed}).catch(console.error);
 	} else {
-		message.reply('the music queue is currently empty.');
+		message.reply('the music queue is currently empty.').catch(console.error);
 	}
 };
 
@@ -152,18 +143,18 @@ const newVideo = async (message, v) => {
 	const guildId = guild.id;
 	let info;
 	try {
-		info = await ytdl.getInfo(v);
+		info = await getInfo(v);
 	} catch (err) {
 		console.error(err);
 	}
 	const video = {message: message, info: info};
 
-	if (!queue[guildId]) {
-		queue[guildId] = [video];
+	if (!queues[guildId]) {
+		queues[guildId] = [video];
 	} else {
-		queue[guildId].push(video);
+		queues[guildId].push(video);
 	}
-	if (queue[guildId].length === 1) {
+	if (queues[guildId].length === 1) {
 		playNext(guild);
 	} else {
 		sendQueue(message);

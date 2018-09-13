@@ -1,53 +1,54 @@
-const Discord = require('discord.js');
+const { MessageEmbed } = require('discord.js');
+const { Command } = require('discord.js-commando');
 
-const app = require('../app');
-const messages = require('../messages');
+const { db, client, addFooter } = require('../..');
+const { leaderboardChannels } = require('../../messages');
 
 const rankEmojis = ['🥇', '🥈', '🥉'];
 const pageSize = 10;
 const previous = '🔺';
 const next = '🔻';
 
-const getDescription = (users, index = 0) => {
-	let description = '';
-	for (let i = index; i < users.length && i < (index + pageSize); i++) {
-		const user = users[i];
-		let rank = i + 1;
-		rank = (rank < 4) ? `${rankEmojis[rank - 1]}  ` : `**\`#${String(rank).padEnd(3)}\u200B\`**`;
-		description += `${rank} <@${user._id}> \`${user.count} messages\`\n`;
+module.exports = class LeaderboardCommand extends Command {
+	constructor(client) {
+		super(client, {
+			name: 'leaderboard',
+			aliases: ['lead'],
+			group: 'users',
+			memberName: 'leaderboard',
+			description: 'Users with the most messages in the server.',
+			guildOnly: true
+		});
 	}
-	return description;
-};
 
-module.exports = async message => {
-	if (message.guild) {
+	async run(msg) {
 		let leaderboard;
 		try {
-			leaderboard = await app.db.collection('counts').aggregate()
-				.match({'_id.guild': message.guild.id, '_id.channel': {$in: messages.leaderboardChannels}})
+			leaderboard = await db.collection('counts').aggregate()
+				.match({'_id.guild': msg.guild.id, '_id.channel': {$in: leaderboardChannels}})
 				.group({_id: '$_id.user', count: {$sum: '$count'}})
 				.sort({count: -1})
 				.toArray();
 		} catch (err) {
 			console.error(err);
 		}
-		const embed = new Discord.MessageEmbed()
+		const embed = new MessageEmbed()
 			.setColor('RANDOM')
 			.setTitle('Users with no lives:')
 			.setDescription(getDescription(leaderboard));
 
 		let reply;
 		try {
-			reply = await message.channel.send({embed: embed});
+			reply = await msg.channel.send({embed: embed});
 		} catch (err) {
 			console.error(err);
 		}
 		let index = 0;
 		const collector = reply.createReactionCollector((reaction, user) => {
-			return user.id !== app.client.user.id && (reaction.emoji.name === previous || reaction.emoji.name === next);
+			return user.id !== client.user.id && (reaction.emoji.name === previous || reaction.emoji.name === next);
 		}, {time: 30000, dispose: true});
 		collector.on('collect', (reaction, user) => {
-			if (user.id === message.author.id) {
+			if (user.id === msg.author.id) {
 				index += (reaction.emoji.name === next ? 1 : -1) * pageSize;
 				if (index >= leaderboard.length) {
 					index = 0;
@@ -60,7 +61,7 @@ module.exports = async message => {
 			}
 		});
 		collector.on('remove', (reaction, user) => {
-			if (user.id === message.author.id) {
+			if (user.id === msg.author.id) {
 				index += (reaction.emoji.name === next ? 1 : -1) * pageSize;
 				if (index >= leaderboard.length) {
 					index = 0;
@@ -75,7 +76,7 @@ module.exports = async message => {
 			users.forEach(user => users.remove(user));
 			users = reply.reactions.get(previous).users;
 			users.forEach(user => users.remove(user));
-			app.addFooter(message, embed, reply);
+			addFooter(msg, embed, reply);
 		});
 		try {
 			await reply.react(previous);
@@ -88,4 +89,15 @@ module.exports = async message => {
 			console.error(err);
 		}
 	}
+};
+
+const getDescription = (users, index = 0) => {
+	let description = '';
+	for (let i = index; i < users.length && i < (index + pageSize); i++) {
+		const user = users[i];
+		let rank = i + 1;
+		rank = (rank < 4) ? `${rankEmojis[rank - 1]}  ` : `**\`#${String(rank).padEnd(3)}\u200B\`**`;
+		description += `${rank} <@${user._id}> \`${user.count} messages\`\n`;
+	}
+	return description;
 };

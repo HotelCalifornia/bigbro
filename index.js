@@ -1,8 +1,52 @@
-const Discord = require('discord.js');
-const mongodb = require('mongodb');
-const util = require('util');
+const { MessageEmbed } = require('discord.js');
+const { Client, FriendlyError, SQLiteProvider } = require('discord.js-commando');
+const { MongoClient } = require('mongodb');
+const path = require('path');
+const sqlite = require('sqlite');
+const { inspect } = require('util');
 
-const client = new Discord.Client();
+const client = new Client({
+	commandPrefix: 'bigbro',
+	owner: '197781934116569088',
+	disableEveryone: true,
+	unknownCommandResponse: false
+});
+
+client
+	.on('error', console.error)
+	.on('warn', console.warn)
+	.on('ready', () => {
+		console.log(`Logged in as ${client.user.tag}`);
+		client.user.setActivity(`${prefix}help`, {url: 'https://github.com/jtkiesel/bigbro', type: 'PLAYING'});
+	})
+	.on('disconnect', () => console.warn('Disconnected!'))
+	.on('reconnecting', () => console.warn('Reconnecting...'))
+	.on('commandError', (cmd, err) => {
+		if (err instanceof FriendlyError) {
+			return;
+		}
+		console.error(`Error in command ${commandToString(cmd)}`, err);
+	})
+	.on('commandBlocked', (msg, reason) => console.log(`Command ${commandToString(msg.command)} blocked; ${reason}`))
+	.on('commandPrefixChanged', (guild, prefix) => console.log(`Prefix ${prefix === '' ? 'removed' : `changed to ${prefix || 'the default'}`} ${getChangeLocation(guild)}.`))
+	.on('commandStatusChange', (guild, command, enabled) => console.log(`Command ${commandToString(command)} ${statusToString(enabled)} ${getChangeLocation(guild)}.`))
+	.on('groupStatusChange', (guild, group, enabled) => console.log(`Group ${group.id} ${statusToString(enabled)} ${getChangeLocation(guild)}.`));
+
+client.setProvider(sqlite.open(path.join(__dirname, 'settings.sqlite3')).then(db => new SQLiteProvider(db))).catch(console.error);
+
+client.registry
+	.registerDefaultTypes()
+	.registerDefaultGroups()
+	.registerDefaultCommands({ping: false})
+	.registerGroups([['util', 'Utilities'], ['users', 'Users'], ['music', 'Music']])
+	.registerCommandsIn(path.join(__dirname, 'commands'));
+
+const commandToString = command => command ? `${command.groupID}:${command.memberName}` : '';
+
+const getChangeLocation = guild => guild ? `in guild ${guild.name} (${guild.id})` : 'globally';
+
+const statusToString = enabled => enabled ? 'enabled' : 'disabled';
+
 const token = process.env.BIGBRO_TOKEN;
 const mongodbUri = process.env.BIGBRO_DB;
 const mongodbOptions = {
@@ -43,7 +87,7 @@ const handleCommand = async message => {
 	if (commands.hasOwnProperty(cmd)) {
 		commands[cmd](message, args);
 	} else if (cmd === 'help') {
-		const embed = new Discord.MessageEmbed()
+		const embed = new MessageEmbed()
 			.setColor('RANDOM')
 			.setTitle('Commands')
 			.setDescription(helpDescription);
@@ -56,7 +100,7 @@ const handleCommand = async message => {
 				const match = args.match(/^\s*await\s+(.*)$/);
 				let evaled = match ? (await eval(match[1])) : eval(args);
 				if (typeof evaled !== 'string') {
-					evaled = util.inspect(evaled);
+					evaled = inspect(evaled);
 				}
 				message.channel.send(clean(evaled), {code: 'xl'}).catch(console.error);
 			} catch (error) {
@@ -96,7 +140,7 @@ const log = (message, type) => {
 				color = 'BLUE';
 				break;
 		}
-		const embed = new Discord.MessageEmbed()
+		const embed = new MessageEmbed()
 			.setColor(color)
 			.setDescription(`${message.member}\n${message.content}`)
 			.setTimestamp(message.createdAt);
@@ -114,7 +158,7 @@ const restart = () => {
 	client.destroy();
 	login();
 };
-
+/*
 client.on('ready', async () => {
 	console.log('Ready!');
 	client.user.setActivity(`${prefix}help`, {url: 'https://github.com/jtkiesel/bigbro', type: 'PLAYING'});
@@ -172,17 +216,16 @@ client.on('reconnecting', () => console.log('Reconnecting.'));
 client.on('error', console.error);
 
 client.on('warn', console.warn);
-
-mongodb.MongoClient.connect(mongodbUri, mongodbOptions).then(mongoClient => {
+*/
+MongoClient.connect(mongodbUri, mongodbOptions).then(mongoClient => {
 	db = mongoClient.db(mongodbUri.match(/\/([^/]+)$/)[1]);
-	module.exports.db = db;
-
+	exports.db = db;
+/*
 	Object.keys(commandInfo).forEach(name => commands[name] = require('./commands/' + name));
 	Object.entries(commandInfo).forEach(([name, desc]) => helpDescription += `\n\`${prefix}${name}\`: ${desc}`);
-
-	messages = require('./messages');
+*/
+	//messages = require('./messages');
 	login();
 }).catch(console.error);
 
-module.exports.client = client;
-module.exports.addFooter = addFooter;
+module.exports = { client, addFooter };
